@@ -680,7 +680,7 @@
                         const maxItem = identicalMatches[0].original;
                         const minItem = identicalMatches[identicalMatches.length - 1].original;
                         results.push([
-                            srcName, srcSpec, srcUnit, "[충돌:고가]", "[충돌:저가]",
+                            srcName, srcSpec, srcUnit, "충돌!", "코드를확인하세요.",
                             maxItem.A, maxItem.B, maxItem.C, maxItem.D, maxItem.E,
                             minItem.A, minItem.B, minItem.C, minItem.D, minItem.E 
                         ]);
@@ -911,7 +911,7 @@
 
                 dbStatusBadge.textContent = "CONNECTED";
                 dbStatusBadge.className = "px-2 py-1 rounded text-[10px] font-bold bg-emerald-500 text-white";
-                dbStatusText.innerHTML = `<span class="w-2 h-2 bg-emerald-500 rounded-full mr-2"></span>DB v6.0 연결됨 (${dbRows.length}건)`;
+                dbStatusText.innerHTML = `<span class="w-2 h-2 bg-emerald-500 rounded-full mr-2"></span>DB v6.0 연결됨`;
                 dbStatusText.className = "text-xs text-emerald-600 font-bold";
                 addLog(`Master DB 로드 완료: [${sheetName}] + 로컬 DB 병합`, 'success');
                 if(csvRows.length > 0) matchBtn.disabled = false;
@@ -1134,7 +1134,7 @@
                     document.getElementById("matchBtnText").textContent = `처리 중... ${p}%`;
                 } else if (e.data.type === 'COMPLETE') {
                     resultRows = e.data.results;
-                    const conflicts = resultRows.filter(r => r[3] === "[충돌:고가]").length;
+                    const conflicts = resultRows.filter(r => r[3] === "[충돌]").length;
                     const autoMatched = resultRows.filter(r => r[8] === "자동매칭").length;
                     addLog(`매칭 프로세스 완료!`, 'success');
                     addLog(`자동 매칭: ${autoMatched}건 / 단가 충돌: ${conflicts}건 감지됨`, 'info');
@@ -1159,13 +1159,13 @@
         function downloadExcel() {
             if (resultRows.length === 0) return;
             try {
-                const header = ["대상_품명", "대상_규격", "대상_단위", "매칭_재료비", "매칭_노무비", "후보1_품명", "후보1_규격", "후보1_단위", "후보1_재료비", "후보1_노무비", "후보2_품명", "후보2_규격", "후보2_단위", "후보2_재료비", "후보2_노무비"];
+                const header = ["공_품명", "공_규격", "공_단위", "M_재료비", "M_노무비", "코드1_품명", "코드1_규격", "코드1_단위", "재료비", "노무비", "코드2_품명", "코드2_규격", "코드2_단위", "재료비", "노무비"];
                 const ws = XLSX.utils.aoa_to_sheet([header, ...resultRows]);
                 const wscols = [{wch: 25}, {wch: 20}, {wch: 8}, {wch: 15}, {wch: 15}, {wch: 25}, {wch: 20}, {wch: 8}, {wch: 15}, {wch: 15}, {wch: 25}, {wch: 20}, {wch: 8}, {wch: 15}, {wch: 15}];
                 ws['!cols'] = wscols;
                 const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "삼진_매칭결과");
-                const fileName = `SAMJIN_매칭결과_${new Date().toISOString().slice(0,10)}_${Math.floor(Math.random()*1000)}.xlsx`;
+                XLSX.utils.book_append_sheet(wb, ws, "매칭결과");
+                const fileName = `매칭결과_${new Date().toISOString().slice(0,10)}_${Math.floor(Math.random()*1000)}.xlsx`;
                 XLSX.writeFile(wb, fileName);
                 addLog(`엑셀 파일 다운로드 완료: ${fileName}`, 'success');
             } catch (err) { addLog("다운로드 중 오류 발생: " + err.message, 'error'); }
@@ -1282,7 +1282,7 @@
                     };
                 }).filter(d => d.keywords.length > 0 || d.code);
 
-                status.innerText = `✅ Pro v3.5 DB 연결됨 (${pumsumMasterDB.length}개 항목)`;
+                status.innerText = `✅ Pro v3.5 DB 연결됨`;
                 btn.innerHTML = "✔️ 동기화 완료";
                 btn.disabled = false;
                 initPumsumTableHeader();
@@ -1301,12 +1301,12 @@
                     <th class="px-3 py-3 border border-indigo-100">품명</th>
                     <th class="px-3 py-3 border border-indigo-100">규격</th>
                     <th class="px-3 py-3 border border-indigo-100 text-center">점수</th>
-                    <th class="px-3 py-3 border border-indigo-100 bg-indigo-100 text-indigo-700">DB코드</th>
-                    <th class="px-3 py-3 border border-indigo-100 bg-indigo-100 text-indigo-700">DB규격</th>
-                    <th class="px-3 py-3 border border-indigo-100 text-center">AE(텍스트)</th>
-                    <th class="px-3 py-3 border border-indigo-100 text-center">AF(결과)</th>
-                    <th class="px-3 py-3 border border-indigo-100 text-center">AG</th>
-                    <th class="px-3 py-3 border border-indigo-100 text-center">AH</th>
+                    <th class="px-3 py-3 border border-indigo-100 bg-indigo-100 text-indigo-700">품셈코드</th>
+                    <th class="px-3 py-3 border border-indigo-100 bg-indigo-100 text-indigo-700">품셈규격</th>
+                    <th class="px-3 py-3 border border-indigo-100 text-center">공종</th>
+                    <th class="px-3 py-3 border border-indigo-100 text-center">품셈(인)</th>
+                    <th class="px-3 py-3 border border-indigo-100 text-center">공종</th>
+                    <th class="px-3 py-3 border border-indigo-100 text-center">품셈(인)</th>
                 </tr>
             `;
         }
@@ -1336,9 +1336,9 @@
             pumsumFinalOutput = JSON.parse(JSON.stringify(sourceBill));
             // 헤더 설정 (v3.5 기준)
             if (pumsumFinalOutput[0]) {
-                pumsumFinalOutput[0][4] = "DB품셈코드";
-                pumsumFinalOutput[0][5] = "DB규격";
-                const headers = ["AE(텍스트)", "AF(수량곱)", "AG(텍스트)", "AH(수량곱)", "AI(텍스트)", "AJ(수량곱)", "AK(텍스트)", "AL(수량곱)", "매칭점수"];
+                pumsumFinalOutput[0][4] = "품셈코드";
+                pumsumFinalOutput[0][5] = "품셈규격";
+                const headers = ["공종", "품셈(인)", "공종", "품셈(인)", "공종", "품셈(인)", "공종", "품셈(인)", "신뢰도"];
                 for(let j=0; j<9; j++) pumsumFinalOutput[0][6 + j] = headers[j];
             }
 
