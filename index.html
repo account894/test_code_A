@@ -285,12 +285,9 @@
 
                 <div class="mb-4 flex flex-col md:flex-row gap-3">
                     <input type="text" id="searchDB" placeholder="품명, 규격으로 검색..." class="flex-1 px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
-                    <select id="filterCategory" class="px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
+                    <select id="filterCategory" class="px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" onchange="renderDBTable()">
                         <option value="">전체 카테고리</option>
-                        <option value="배관">배관</option>
-                        <option value="보온">보온</option>
-                        <option value="밸브">밸브</option>
-                        <option value="기타">기타</option>
+                        <!-- Options will be populated dynamically -->
                     </select>
                 </div>
 
@@ -299,12 +296,13 @@
                         <thead>
                             <tr>
                                 <th style="width: 5%">#</th>
-                                <th style="width: 25%">품명</th>
-                                <th style="width: 25%">규격</th>
+                                <th style="width: 20%">품명</th>
+                                <th style="width: 20%">규격</th>
                                 <th style="width: 8%">단위</th>
-                                <th style="width: 12%">재료비</th>
-                                <th style="width: 12%">노무비</th>
-                                <th style="width: 13%">작업</th>
+                                <th style="width: 10%">재료비</th>
+                                <th style="width: 10%">노무비</th>
+                                <th style="width: 15%">비고</th>
+                                <th style="width: 12%">작업</th>
                             </tr>
                         </thead>
                         <tbody id="dbTableBody">
@@ -416,7 +414,6 @@
 
         <!-- Tab Content: n8n Config -->
         <div id="tab-n8n-config" class="tab-content hidden">
-            <!-- ... existing n8n config content ... -->
              <div class="glass-card p-8 rounded-3xl shadow-xl max-w-4xl mx-auto">
                 <h2 class="text-2xl font-bold text-slate-800 mb-6">⚙️ n8n 자동화 설정</h2>
                 
@@ -500,10 +497,14 @@
                     <input type="text" id="newItemSpec" class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="예: 80Ax3000L">
                 </div>
 
-                <div class="grid grid-cols-3 gap-4">
+                <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-bold text-slate-700 mb-2">단위 *</label>
                         <input type="text" id="newItemUnit" class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="EA">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">비고</label>
+                        <input type="text" id="newItemNote" class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="카테고리/메모">
                     </div>
                     <div>
                         <label class="block text-sm font-bold text-slate-700 mb-2">재료비</label>
@@ -613,7 +614,6 @@
 
     <!-- Web Worker Script -->
     <script id="worker-script" type="javascript/worker">
-        // ... existing worker code ...
         const ALIAS_MAP = {
             "스테인리스": "STS", "스텐": "STS", "SUS": "STS", "SU": "STS",
             "배관용탄소강관(무용접)": "배관용탄소강관",
@@ -940,7 +940,8 @@
                     B: getValueByKeywords(r, ["규격", "사이즈", "규 격"]) || "",
                     C: getValueByKeywords(r, ["단위", "단 위"]) || "",
                     D: parsePrice(getValueByKeywords(r, ["재료비", "재료", "단가", "자재비"])),
-                    E: parsePrice(getValueByKeywords(r, ["노무비", "노무"]))
+                    E: parsePrice(getValueByKeywords(r, ["노무비", "노무"])),
+                    F: getValueByKeywords(r, ["비고", "메모", "참고", "Remarks"]) || ""
                 }));
 
                 localDB.forEach(local => {
@@ -964,15 +965,46 @@
             }
         }
 
+        // Updated function to populate dynamic category filters based on "Remarks" (F column)
+        function updateCategoryOptions() {
+            const select = document.getElementById('filterCategory');
+            const currentVal = select.value;
+            const uniqueNotes = [...new Set(localDB.map(item => item.F || "").filter(x => x))].sort();
+            
+            // Keep "All" option
+            select.innerHTML = '<option value="">전체 카테고리</option>';
+            
+            uniqueNotes.forEach(note => {
+                const option = document.createElement('option');
+                option.value = note;
+                option.textContent = note;
+                if (note === currentVal) option.selected = true;
+                select.appendChild(option);
+            });
+        }
+
         // ... existing renderDBTable, updateDBItem, deleteDBItem ...
         function renderDBTable() {
+            // Update filter options first based on current data
+            updateCategoryOptions();
+
             const tbody = document.getElementById('dbTableBody');
             tbody.innerHTML = '';
             const searchTerm = document.getElementById('searchDB').value.toLowerCase();
+            const filterCategory = document.getElementById('filterCategory').value;
+
             let filteredDB = localDB;
+            
+            // Filter by search term
             if (searchTerm) {
                 filteredDB = filteredDB.filter(item => item.A.toLowerCase().includes(searchTerm) || item.B.toLowerCase().includes(searchTerm));
             }
+            
+            // Filter by Category (Remarks)
+            if (filterCategory) {
+                filteredDB = filteredDB.filter(item => (item.F || "") === filterCategory);
+            }
+
             filteredDB.forEach((item, idx) => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -982,17 +1014,19 @@
                     <td><input type="text" value="${item.C}" onchange="updateDBItem(${idx}, 'C', this.value)"></td>
                     <td><input type="number" value="${item.D}" onchange="updateDBItem(${idx}, 'D', this.value)"></td>
                     <td><input type="number" value="${item.E}" onchange="updateDBItem(${idx}, 'E', this.value)"></td>
+                    <td><input type="text" value="${item.F || ''}" onchange="updateDBItem(${idx}, 'F', this.value)"></td>
                     <td><button onclick="openConfirmDelete(${idx})" class="text-rose-600 hover:text-rose-800 font-semibold">삭제</button></td>
                 `;
                 tbody.appendChild(tr);
             });
-            document.getElementById('dbCount').textContent = localDB.length;
+            document.getElementById('dbCount').textContent = filteredDB.length; // Show filtered count or total? Usually users expect filtered count.
         }
         function updateDBItem(idx, field, value) {
             localDB[idx][field] = value;
             localStorage.setItem('samjin_local_db', JSON.stringify(localDB));
             addLog(`품목 수정: ${localDB[idx].A}`, 'success');
             if (n8nConfig.autoSync && n8nConfig.webhookUpdate) sendToN8n(n8nConfig.webhookUpdate, localDB[idx], 'update');
+            if (field === 'F') updateCategoryOptions(); // Update filters if remarks change
         }
         
         // Revised Delete Item Logic
@@ -1028,6 +1062,7 @@
             document.getElementById('newItemUnit').value = '';
             document.getElementById('newItemMat').value = '';
             document.getElementById('newItemLab').value = '';
+            document.getElementById('newItemNote').value = '';
         }
         function addNewItem() {
             const name = document.getElementById('newItemName').value.trim();
@@ -1035,8 +1070,10 @@
             const unit = document.getElementById('newItemUnit').value.trim();
             const mat = document.getElementById('newItemMat').value || '0';
             const lab = document.getElementById('newItemLab').value || '0';
+            const note = document.getElementById('newItemNote').value.trim();
+            
             if (!name || !spec || !unit) { customAlert('품명, 규격, 단위는 필수 입력 항목입니다.'); return; }
-            const newItem = { A: name, B: spec, C: unit, D: mat, E: lab };
+            const newItem = { A: name, B: spec, C: unit, D: mat, E: lab, F: note };
             localDB.push(newItem);
             localStorage.setItem('samjin_local_db', JSON.stringify(localDB));
             closeAddItemModal();
@@ -1085,7 +1122,7 @@
                 const response = await fetch(webhookUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: action, timestamp: new Date().toISOString(), data: { 품명: data.A, 규격: data.B, 단위: data.C, 재료비: data.D, 노무비: data.E } })
+                    body: JSON.stringify({ action: action, timestamp: new Date().toISOString(), data: { 품명: data.A, 규격: data.B, 단위: data.C, 재료비: data.D, 노무비: data.E, 비고: data.F } })
                 });
                 if (response.ok) addLog(`n8n 동기화 성공: ${action} - ${data.A}`, 'success');
                 else addLog(`n8n 동기화 실패: ${response.statusText}`, 'error');
@@ -1121,7 +1158,7 @@
             customAlert('n8n 설정이 저장되었습니다!');
         }
         function exportDBToExcel() {
-            const ws = XLSX.utils.json_to_sheet(localDB.map(item => ({ '품명': item.A, '규격': item.B, '단위': item.C, '재료비': item.D, '노무비': item.E })));
+            const ws = XLSX.utils.json_to_sheet(localDB.map(item => ({ '품명': item.A, '규격': item.B, '단위': item.C, '재료비': item.D, '노무비': item.E, '비고': item.F })));
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "DB");
             XLSX.writeFile(wb, `SAMJIN_DB_${new Date().toISOString().slice(0,10)}.xlsx`);
@@ -1148,10 +1185,12 @@
                         const itemUnit = row[2] ? String(row[2]).trim() : "";
                         const itemMat = row[3] ? String(row[3]).replace(/[^0-9.]/g, '') : "0";
                         const itemLab = row[4] ? String(row[4]).replace(/[^0-9.]/g, '') : "0";
+                        const itemNote = row[5] ? String(row[5]).trim() : ""; 
+                        
                         if (!itemName) { skipCount++; continue; }
                         const isDuplicate = localDB.some(item => item.A === itemName && item.B === itemSpec);
                         if (isDuplicate) { skipCount++; continue; }
-                        const newItem = { A: itemName, B: itemSpec, C: itemUnit, D: itemMat, E: itemLab };
+                        const newItem = { A: itemName, B: itemSpec, C: itemUnit, D: itemMat, E: itemLab, F: itemNote };
                         localDB.push(newItem);
                         importCount++;
                         if (n8nConfig.autoSync && n8nConfig.webhookAdd) sendToN8n(n8nConfig.webhookAdd, newItem, 'import');
@@ -1548,4 +1587,3 @@
     </script>
 </body>
 </html>
-
