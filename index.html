@@ -1,21 +1,1140 @@
-<h3>메일 알림</h3>
-<div id="alert"></div>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAMJIN - 건설 정보 통합 플랫폼</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="squreS.png" type="image/png">
+</head>
+<body class="bg-gray-50 text-gray-800">
 
-<script>
-async function load(){
+    <nav class="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center space-x-8">
+                    <div onclick="switchMainView('home')" class="flex-shrink-0 flex items-center cursor-pointer group">
+                        <img src="squreS.png" alt="SAMJIN 로고" class="w-8 h-8 mr-2 object-contain">
+                        <span class="text-xl font-bold text-gray-900 tracking-tight">SAMJIN</span>
+                    </div>
 
-let res = await fetch("https://xxxxx.trycloudflare.com/webhook/mail-list");
-let data = await res.json();
+                    <div class="hidden md:flex space-x-2 h-10 my-auto">
+                        <button onclick="switchMainView('dashboard')" id="nav-btn-dashboard" class="main-nav-btn flex items-center px-4 text-sm font-bold transition-all">
+                            <i class="ph-bold ph-chart-bar mr-2"></i> 정보마당
+                        </button>
+                        <button onclick="switchMainView('quotation')" id="nav-btn-quotation" class="main-nav-btn flex items-center px-4 text-sm font-bold transition-all">
+                            <i class="ph-bold ph-calculator mr-2"></i> 견적시스템
+                        </button>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="relative" id="notificationContainer">
+                        <button id="notificationBtn" class="p-2 text-gray-400 hover:text-indigo-600 transition-colors relative">
+                            <i class="ph ph-bell text-xl"></i>
+                            <span id="notificationBadge" class="hidden absolute top-1 right-1 flex h-2.5 w-2.5">
+                              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                            </span>
+                        </button>
+                        <div id="notificationDropdown" class="hidden absolute right-0 mt-2 w-80 bg-white/90 backdrop-blur-md border border-gray-200 rounded-2xl shadow-xl z-50 overflow-hidden transform origin-top-right transition-all">
+                            <div class="px-4 py-3 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+                                <span class="text-sm font-bold text-gray-700">알림함</span>
+                                <span id="notificationCountText" class="text-xs text-indigo-600 font-medium bg-indigo-50 px-2 py-0.5 rounded-full">0건</span>
+                            </div>
+                            <ul id="notificationList" class="max-h-64 overflow-y-auto divide-y divide-gray-50">
+                                <li class="px-4 py-8 text-center text-gray-400 text-xs">로딩 중...</li>
+                            </ul>
+                            <div class="px-4 py-2 bg-gray-50 text-center border-t border-gray-100">
+                                <button onclick="NotificationSystem.fetchNotifications()" class="text-xs text-gray-500 hover:text-indigo-600 transition-colors flex items-center justify-center w-full gap-1">
+                                    <i class="ph-bold ph-arrows-clockwise"></i> 새로고침
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="h-9 w-9 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-sm border-2 border-white shadow-sm">K</div>
+                </div>
+            </div>
+        </div>
+    </nav>
 
-let html="";
+    <div id="main-container">
+        
+        <div id="view-home" class="block animate-fade-in">
+            <div class="gradient-header py-16 px-4 sm:px-6 lg:px-8 text-center mb-12">
+                <div class="max-w-3xl mx-auto">
+                    <div class="inline-flex items-center justify-center p-2 bg-white/10 rounded-full mb-4 backdrop-blur-sm border border-white/20">
+                        <i class="ph-fill ph-buildings text-white mr-2"></i>
+                        <span class="text-white text-sm font-medium">건설 정보와 커뮤니티를 한곳에서</span>
+                    </div>
+                    <h1 class="text-4xl md:text-5xl font-extrabold text-white mb-4 tracking-tight drop-shadow-sm">SAMJIN</h1>
+                    <p class="text-indigo-100 text-lg md:text-xl font-light">스마트한 견적 관리와 최신 건설 정보를 통합 제공합니다.</p>
+                </div>
+            </div>
 
-data.forEach(m=>{
-  html += `<div>[${m.received_at}] ${m.subject}</div>`;
-});
+            <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-20 -mt-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div onclick="switchMainView('dashboard')" class="bg-white rounded-3xl p-8 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-gray-100 group relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
+                        <div class="relative z-10">
+                            <div class="w-16 h-16 bg-indigo-100 rounded-2xl flex items-center justify-center mb-6 text-indigo-600 shadow-sm group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                                <i class="ph-fill ph-chart-line-up text-3xl"></i>
+                            </div>
+                            <h2 class="text-2xl font-bold text-gray-900 mb-3 group-hover:text-indigo-600 transition-colors">정보마당</h2>
+                            <p class="text-gray-500 mb-8 leading-relaxed">노임단가, 자재 단가 추이, 환율 등<br>주요 건설 지표를 실시간 대시보드로 확인하세요.</p>
+                            <span class="inline-flex items-center font-bold text-indigo-600 group-hover:translate-x-2 transition-transform">대시보드 바로가기 <i class="ph-bold ph-arrow-right ml-2"></i></span>
+                        </div>
+                    </div>
 
-document.getElementById("alert").innerHTML = html;
-}
+                    <div onclick="switchMainView('quotation')" class="bg-white rounded-3xl p-8 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-gray-100 group relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
+                        <div class="relative z-10">
+                            <div class="w-16 h-16 bg-emerald-100 rounded-2xl flex items-center justify-center mb-6 text-emerald-600 shadow-sm group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                                <i class="ph-fill ph-calculator text-3xl"></i>
+                            </div>
+                            <h2 class="text-2xl font-bold text-gray-900 mb-3 group-hover:text-emerald-600 transition-colors">견적시스템</h2>
+                            <p class="text-gray-500 mb-8 leading-relaxed">엑셀 내역서를 업로드하여<br>품셈 DB와 자동으로 매칭하고 견적을 산출합니다.</p>
+                            <span class="inline-flex items-center font-bold text-emerald-600 group-hover:translate-x-2 transition-transform">시스템 실행하기 <i class="ph-bold ph-arrow-right ml-2"></i></span>
+                        </div>
+                    </div>
+                </div>
 
-load();
-setInterval(load,5000);
-</script>
+                <div class="mt-12 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                    <div id="btn-notice" onclick="showInfoModal('notice')" class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:border-indigo-200 transition-colors cursor-pointer">
+                        <i class="ph-duotone ph-newspaper text-indigo-500 text-2xl mb-2"></i>
+                        <p class="text-sm font-medium text-gray-700">공지사항</p>
+                    </div>
+                    <div onclick="switchMainView('board')" class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:border-indigo-200 transition-colors cursor-pointer">
+                        <i class="ph-duotone ph-chats-teardrop text-indigo-500 text-2xl mb-2"></i>
+                        <p class="text-sm font-medium text-gray-700">자유게시판</p>
+                    </div>
+                    <div id="btn-code-info" onclick="showInfoModal('code-info')" class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:border-indigo-200 transition-colors cursor-pointer">
+                        <i class="ph-duotone ph-book-bookmark text-indigo-500 text-2xl mb-2"></i>
+                        <p class="text-sm font-medium text-gray-700">코드정보</p>
+                    </div>
+                    <div id="btn-usage" onclick="showInfoModal('usage')" class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:border-indigo-200 transition-colors cursor-pointer">
+                        <i class="ph-duotone ph-question text-indigo-500 text-2xl mb-2"></i>
+                        <p class="text-sm font-medium text-gray-700">이용안내</p>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <div id="view-dashboard" class="hidden">
+            <!-- 보안 경고 배너 -->
+            <div id="securityBanner" class="security-banner hidden">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <span class="security-light" id="securityLight"></span>
+                        <span class="security-banner__text" id="securityBannerText">보안 상태 점검 중...</span>
+                    </div>
+                    <button onclick="SecurityMonitor.dismiss()" class="text-sm opacity-70 hover:opacity-100 transition-opacity">
+                        <i class="ph-bold ph-x"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- === 대시보드 개요 (Overview) === -->
+            <div id="dashboard-overview">
+            <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div class="mb-8 flex items-center justify-between">
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-900 mb-2">정보마당</h1>
+                        <p class="text-gray-500">건설 자재, 노임, 환율 등 주요 지표를 한눈에 확인하세요.</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="security-indicator" id="securityIndicator" title="API 보안 상태">
+                            <span class="security-dot" id="securityDot"></span>
+                            <span class="text-xs font-medium text-gray-500" id="securityStatusText">정상</span>
+                        </div>
+                        <button onclick="switchMainView('home')" class="text-sm text-gray-500 hover:text-indigo-600 flex items-center bg-white px-3 py-2 rounded-lg border border-gray-200 shadow-sm">
+                            <i class="ph-bold ph-arrow-left mr-1"></i> 홈으로
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div onclick="MarketDashboard.init('commodity')" class="dashboard-clickable-card bg-white rounded-xl shadow-sm border border-gray-200 p-6 col-span-1 lg:col-span-2">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center space-x-2">
+                                <div class="p-2 bg-red-50 rounded-lg"><i class="ph-fill ph-trend-up text-red-600 text-xl"></i></div>
+                                <h3 class="font-bold text-gray-800 text-lg">원자재 단가 추이</h3>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span id="lmeUpdateDate" class="text-xs text-gray-400 font-medium"></span>
+                                <span class="text-xs text-indigo-500 font-semibold bg-indigo-50 px-2 py-1 rounded-full">클릭하여 상세보기</span>
+                            </div>
+                        </div>
+                        <div id="overviewMaterialCards" class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            <div class="text-center text-gray-400 text-sm py-12 col-span-full">
+                                <i class="ph-bold ph-spinner animate-spin text-indigo-500 text-xl"></i>
+                                <p class="mt-2">LME 시세 로딩 중...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div onclick="MarketDashboard.init('currency')" class="dashboard-clickable-card exchange-rate-section bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <div class="flex items-center justify-between mb-5">
+                            <div class="flex items-center space-x-2">
+                                <div class="p-2 bg-blue-50 rounded-lg"><i class="ph-fill ph-currency-dollar text-blue-600 text-xl"></i></div>
+                                <h3 class="font-bold text-gray-800 text-lg">실시간 환율 정보</h3>
+                            </div>
+                            <span class="text-xs text-indigo-500 font-semibold bg-indigo-50 px-2 py-1 rounded-full">상세보기</span>
+                        </div>
+
+                        <div class="exchange-cards">
+                            <article class="exchange-card" id="card-usd">
+                                <div class="exchange-card__flag">🇺🇸</div>
+                                <div class="exchange-card__body">
+                                    <span class="exchange-card__label">USD / KRW</span>
+                                    <span class="exchange-card__rate" id="rate-usd">--</span>
+                                    <span class="exchange-card__sub" id="rate-usd-sub">불러오는 중...</span>
+                                </div>
+                            </article>
+                            <article class="exchange-card" id="card-jpy">
+                                <div class="exchange-card__flag">🇯🇵</div>
+                                <div class="exchange-card__body">
+                                    <span class="exchange-card__label">JPY / KRW</span>
+                                    <span class="exchange-card__rate" id="rate-jpy">--</span>
+                                    <span class="exchange-card__sub" id="rate-jpy-sub">불러오는 중...</span>
+                                </div>
+                            </article>
+                        </div>
+
+                        <p class="exchange-update-time text-xs text-gray-400 mt-4 text-right" id="exchangeUpdateTime"></p>
+                    </div>
+
+                    <!-- 카드: 노임단가표 (왼쪽, col-span-1) -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center space-x-2">
+                                <div class="p-2 bg-orange-50 rounded-lg"><i class="ph-fill ph-hammer text-orange-600 text-xl"></i></div>
+                                <h3 class="font-bold text-gray-800 text-lg">노임단가표 (2026 상반기)</h3>
+                            </div>
+                            <span class="text-[10px] text-orange-600 font-bold bg-orange-50 px-2 py-0.5 rounded-full">정부고시</span>
+                        </div>
+                        <div id="laborTableContent">
+                            <div class="text-center text-gray-400 text-sm py-8">
+                                <i class="ph-bold ph-spinner animate-spin text-orange-500 text-xl"></i>
+                                <p class="mt-2">노임 데이터 로딩 중...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 카드: 자재 단가 변동 (오른쪽, col-span-2, 클릭 시 전체 탭) -->
+                    <div onclick="MarketDashboard.openMaterialDetail()" class="dashboard-clickable-card bg-white rounded-xl shadow-sm border border-gray-200 p-6 lg:col-span-2">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center space-x-2">
+                                <div class="p-2 bg-emerald-50 rounded-lg"><i class="ph-fill ph-swap text-emerald-600 text-xl"></i></div>
+                                <h3 class="font-bold text-gray-800 text-lg">자재 단가 변동</h3>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full">TOP MOVERS</span>
+                                <span class="text-xs text-indigo-500 font-semibold bg-indigo-50 px-2 py-1 rounded-full">클릭하여 전체보기</span>
+                            </div>
+                        </div>
+                        <div id="topMoversContent">
+                            <div class="text-center text-gray-400 text-sm py-8">
+                                <i class="ph-bold ph-spinner animate-spin text-emerald-500 text-xl"></i>
+                                <p class="mt-2">자재 데이터 로딩 중...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    </div>
+            </main>
+            <footer class="bg-gray-50 border-t border-gray-200 mt-12 py-8">
+                <div class="max-w-7xl mx-auto px-4 text-center text-gray-400 text-sm">&copy; 2026 SAMJIN. All rights reserved.</div>
+            </footer>
+            </div>
+
+            <!-- === 자재단가 전체 탭 뷰 === -->
+            <div id="view-material-detail" class="hidden">
+                <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                    <div class="mb-6 flex items-center justify-between">
+                        <div>
+                            <h1 class="text-2xl font-bold text-gray-900 mb-1">자재 단가 변동 현황</h1>
+                            <p class="text-gray-500 text-sm">시트별 전체 자재 등락 현황 (D열 기준)</p>
+                        </div>
+                        <button onclick="MarketDashboard.closeMaterialDetail()" class="flex items-center gap-2 text-sm text-gray-500 hover:text-indigo-600 bg-white px-3 py-2 rounded-lg border border-gray-200 shadow-sm transition-colors">
+                            <i class="ph-bold ph-arrow-left"></i> 돌아가기
+                        </button>
+                    </div>
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div class="flex" style="min-height: 520px;">
+                            <!-- 좌측: 품목 분류 선택 -->
+                            <aside class="w-52 flex-shrink-0 border-r border-gray-100 bg-slate-50/60 p-4">
+                                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 px-1">품목 분류</p>
+                                <div id="matSheetSelector" class="space-y-1.5"></div>
+                            </aside>
+                            <!-- 우측: 데이터 테이블 -->
+                            <div id="matDetailContent" class="flex-1 p-6 min-w-0 overflow-auto">
+                                <div class="text-center text-gray-300 text-sm py-20">
+                                    <i class="ph-bold ph-arrow-square-left text-3xl"></i>
+                                    <p class="mt-3 font-medium text-gray-400">좌측에서 품목을 선택하세요</p>
+                                    <p class="text-xs mt-1">파이프 · 밸브 · 이음</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </div>
+
+            <!-- === 시장 데이터 상세 대시보드 (Market Detail) === -->
+            <div id="market-detail" class="hidden">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+                    <!-- Header & Tabs -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                        <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 pb-0">
+                            <div>
+                                <h1 class="text-2xl font-bold flex items-center gap-2">
+                                    <i class="ph-fill ph-chart-line-up text-indigo-600 text-3xl"></i>
+                                    시장 데이터 대시보드
+                                </h1>
+                                <p class="text-slate-500 text-sm mt-1 flex items-center gap-1 mb-4">
+                                    <i class="ph ph-clock text-sm"></i> 데이터 기준일: <span id="mktLastUpdated" class="font-bold text-blue-600">-</span>
+                                </p>
+                            </div>
+                            <div class="flex gap-2 items-center mb-4 md:mb-0">
+                                <button onclick="MarketDashboard.close()" class="flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-xl transition-all font-medium text-sm">
+                                    <i class="ph-bold ph-arrow-left"></i> 돌아가기
+                                </button>
+                                <button onclick="window.location.reload()" class="flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-xl transition-all font-medium text-sm">
+                                    <i class="ph-bold ph-arrows-clockwise"></i> 새로고침
+                                </button>
+                            </div>
+                        </header>
+
+                        <div class="flex px-6 border-b border-slate-100">
+                            <button onclick="MarketDashboard.switchTab('currency')" id="mktTabCurrency" class="mkt-tab-active px-6 py-3 transition-colors hover:text-blue-600 flex items-center gap-2">
+                                <i class="ph-bold ph-currency-dollar"></i> 환율 <span class="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-bold">LIVE</span>
+                            </button>
+                            <button onclick="MarketDashboard.switchTab('commodity')" id="mktTabCommodity" class="mkt-tab-inactive px-6 py-3 transition-colors hover:text-blue-600 flex items-center gap-2">
+                                <i class="ph-bold ph-factory"></i> 원자재 <span class="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full font-bold">LME DATA</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- ===== CURRENCY TAB ===== -->
+                    <div id="mktCurrencySection" class="grid grid-cols-1 lg:grid-cols-3 gap-8 mkt-fade-in">
+                        <div class="lg:col-span-3 bg-blue-50 border border-blue-100 p-3 rounded-xl flex items-start gap-2 text-sm text-blue-800">
+                            <i class="ph-fill ph-info text-blue-500 mt-0.5"></i>
+                            <div>
+                                <span class="font-bold">데이터 출처:</span> 유럽중앙은행(ECB) 공식 데이터 (Frankfurter API). <br>
+                                <span class="text-xs text-blue-600">※ 실제 거래일 기준 데이터이며, 주말/공휴일에는 변동이 없을 수 있습니다.</span>
+                            </div>
+                        </div>
+
+                        <!-- Current Rate & Converter -->
+                        <div class="lg:col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-6">
+                            <div>
+                                <h2 class="text-sm font-semibold text-slate-400 mb-2 uppercase tracking-wider">현재 환율</h2>
+                                <div class="flex items-end gap-2">
+                                    <span id="mktDisplayRate" class="text-4xl font-bold text-slate-800">-</span>
+                                    <span id="mktDisplayCurrency" class="text-lg font-medium text-slate-500 mb-1">KRW</span>
+                                </div>
+                                <div id="mktFluctuation" class="mt-2 flex items-center gap-2 text-lg font-bold">
+                                    <span class="text-slate-400 text-sm font-normal">데이터 로딩 중...</span>
+                                </div>
+                            </div>
+                            <hr class="border-slate-100">
+                            <div>
+                                <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                                    <i class="ph-bold ph-arrows-left-right text-blue-500"></i> 환율 계산기
+                                </h2>
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="text-xs font-medium text-slate-400 uppercase tracking-wider">기준 통화</label>
+                                        <div class="flex gap-2 mt-1">
+                                            <input type="number" id="mktAmountInput" value="1" min="0" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium">
+                                            <select id="mktBaseCurrency" class="p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold cursor-pointer">
+                                                <option value="USD">USD</option>
+                                                <option value="EUR">EUR</option>
+                                                <option value="JPY">JPY</option>
+                                                <option value="GBP">GBP</option>
+                                                <option value="CNY">CNY</option>
+                                                <option value="KRW">KRW</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="flex justify-center py-2">
+                                        <div class="bg-blue-50 p-2 rounded-full text-blue-500"><i class="ph-bold ph-arrow-down"></i></div>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-medium text-slate-400 uppercase tracking-wider">대상 통화</label>
+                                        <div class="flex gap-2 mt-1">
+                                            <div id="mktConvertedResult" class="w-full p-3 bg-blue-50 border border-blue-100 rounded-xl font-bold text-blue-700 text-lg flex items-center">-</div>
+                                            <select id="mktTargetCurrency" class="p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold cursor-pointer">
+                                                <option value="KRW">KRW</option>
+                                                <option value="USD">USD</option>
+                                                <option value="EUR">EUR</option>
+                                                <option value="JPY">JPY</option>
+                                                <option value="GBP">GBP</option>
+                                                <option value="CNY">CNY</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Currency Graph -->
+                        <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                            <div class="flex items-center justify-between mb-6">
+                                <h2 class="text-lg font-semibold flex items-center gap-2">
+                                    <i class="ph-bold ph-chart-line text-blue-500"></i> <span id="mktChartTitle">USD/KRW 30일 추이</span>
+                                </h2>
+                                <span id="mktChangeBadge" class="px-2 py-1 rounded-md font-medium text-sm bg-slate-100 text-slate-500">데이터 로딩 중...</span>
+                            </div>
+                            <div class="relative h-[350px] w-full">
+                                <canvas id="mktRateChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Currency Table -->
+                        <div class="lg:col-span-3 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                            <div class="p-6 border-b border-slate-100">
+                                <h2 class="text-lg font-semibold">주요 통화 실시간 환율</h2>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left">
+                                    <thead class="bg-slate-50 text-slate-400 text-xs uppercase tracking-wider font-semibold">
+                                        <tr>
+                                            <th class="px-6 py-4">통화명</th>
+                                            <th class="px-6 py-4">환율</th>
+                                            <th class="px-6 py-4">상태</th>
+                                            <th class="px-6 py-4">동작</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="mktRatesTableBody" class="divide-y divide-slate-100"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ===== COMMODITY TAB ===== -->
+                    <div id="mktCommoditySection" class="grid grid-cols-1 lg:grid-cols-3 gap-8 mkt-fade-in hidden">
+                        <div class="lg:col-span-3 bg-indigo-50 border border-indigo-100 p-4 rounded-xl flex items-start gap-3 text-sm text-indigo-900">
+                            <i class="ph-fill ph-file-text text-indigo-500 text-lg mt-0.5"></i>
+                            <div>
+                                <span class="font-bold text-base">데이터 출처: LME 시세 (Google Sheets 실시간 연동)</span><br>
+                                <span class="text-indigo-700">
+                                    <strong>연동 방식:</strong> Google Sheets CSV Export<br>
+                                    <strong>데이터:</strong> 한국비철금속협회 공식 LME 시세 기반
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Material Price Card -->
+                        <div class="lg:col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-6">
+                            <div>
+                                <h2 class="text-sm font-semibold text-slate-400 mb-2 uppercase tracking-wider">최신 시세</h2>
+                                <div class="flex items-end gap-2">
+                                    <span id="mktMatPrice" class="text-4xl font-bold text-slate-800">-</span>
+                                    <span class="text-lg font-medium text-slate-500 mb-1">USD/Ton</span>
+                                </div>
+                                <div id="mktMatFluctuation" class="mt-2 flex items-center gap-2 text-lg font-bold">
+                                    <span class="text-slate-400 text-sm font-normal">데이터 로딩 중...</span>
+                                </div>
+                            </div>
+                            <hr class="border-slate-100">
+                            <div>
+                                <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                                    <i class="ph-bold ph-factory text-indigo-500"></i> 원자재 선택 (LME)
+                                </h2>
+                                <select id="mktMaterialSelect" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold cursor-pointer text-lg">
+                                    <option value="Cu">구리 (Copper) - 전선/배관</option>
+                                    <option value="Al">알루미늄 (Aluminum) - 덕트/창호</option>
+                                    <option value="Zn">아연 (Zinc) - 도금/강판</option>
+                                    <option value="Pb">납 (Lead) - 배관/차폐</option>
+                                    <option value="Ni">니켈 (Nickel) - STS 합금</option>
+                                    <option value="Sn">주석 (Tin) - 솔더/도금</option>
+                                </select>
+                                <div class="mt-4 space-y-2">
+                                    <p class="text-xs text-slate-400 uppercase tracking-wider font-bold">보기 기간</p>
+                                    <div class="flex gap-2">
+                                        <button onclick="MarketDashboard.setMaterialViewMode(7)" id="mktBtn7d" class="flex-1 py-2 px-3 rounded-lg border text-sm transition-all btn-period-inactive">최근 7일</button>
+                                        <button onclick="MarketDashboard.setMaterialViewMode(30)" id="mktBtn30d" class="flex-1 py-2 px-3 rounded-lg border text-sm transition-all btn-period-active">최근 30일</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Material Graph -->
+                        <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                            <div class="flex items-center justify-between mb-6">
+                                <h2 class="text-lg font-semibold flex items-center gap-2">
+                                    <i class="ph-bold ph-chart-bar text-indigo-500"></i> <span id="mktMatChartTitle">구리 가격 추이</span>
+                                </h2>
+                                <span id="mktMatChangeBadge" class="px-2 py-1 rounded-md font-medium text-sm bg-slate-100 text-slate-500">데이터 로딩 중...</span>
+                            </div>
+                            <div class="relative h-[350px] w-full">
+                                <canvas id="mktMatChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Material Table -->
+                        <div class="lg:col-span-3 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                            <div class="p-6 border-b border-slate-100">
+                                <h2 class="text-lg font-semibold">주요 원자재 시세 목록</h2>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left">
+                                    <thead class="bg-slate-50 text-slate-400 text-xs uppercase tracking-wider font-semibold">
+                                        <tr>
+                                            <th class="px-6 py-4">품목명</th>
+                                            <th class="px-6 py-4">용도</th>
+                                            <th class="px-6 py-4">현재가 ($/Ton)</th>
+                                            <th class="px-6 py-4">전일대비</th>
+                                            <th class="px-6 py-4">동작</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="mktMatTableBody" class="divide-y divide-slate-100"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI Analysis Section -->
+                    <section class="bg-gradient-to-r from-blue-600 to-indigo-700 p-1 rounded-2xl shadow-lg mt-6">
+                        <div class="bg-white/95 backdrop-blur-sm p-6 rounded-[14px]">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-lg font-bold flex items-center gap-2 text-indigo-900">
+                                    <i class="ph-fill ph-sparkle text-indigo-600 text-xl"></i> AI 전문가 시장 분석 (Google Search 연동)
+                                </h3>
+                                <button id="mktAiBtn" onclick="MarketDashboard.analyzeTrend()" class="text-xs font-bold uppercase tracking-widest text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors">
+                                    AI에게 전문가 분석 요청
+                                </button>
+                            </div>
+                            <div id="mktAiResult" class="text-slate-700 leading-relaxed text-sm">
+                                <p class="whitespace-pre-line">
+                                버튼을 클릭하면 <span class="font-bold text-indigo-600">현재 환율/원자재 데이터</span>와 <span class="font-bold text-blue-600">실시간 뉴스(Google Search)</span>를 결합하여,
+                                한국 건설 경기 및 기계/소방 설비 공사에 미치는 영향을 종합적으로 분석합니다.
+                                </p>
+                            </div>
+                        </div>
+                    </section>
+
+                </div>
+            </div>
+        </div>
+
+        <div id="view-quotation" class="hidden">
+            <div class="max-w-7xl mx-auto p-4 md:p-8">
+                <header class="mb-8 flex items-center justify-between">
+                    <div>
+                        <div class="inline-block px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold mb-2 tracking-widest uppercase">Intelligent Matching Engine v6.0</div>
+                        <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">SAMJIN <span class="text-indigo-600">견적시스템</span></h1>
+                    </div>
+                    <button onclick="switchMainView('home')" class="text-sm text-gray-500 hover:text-indigo-600 flex items-center bg-white px-3 py-2 rounded-lg border border-gray-200 shadow-sm">
+                        <i class="ph-bold ph-arrow-left mr-1"></i> 홈으로
+                    </button>
+                </header>
+
+                <div class="mb-8 border-b border-slate-200">
+                    <div class="flex gap-2 overflow-x-auto">
+                        <button class="tab-button active whitespace-nowrap" onclick="switchTab('matching')">🎯 매칭 시스템</button>
+                        <button class="tab-button whitespace-nowrap" onclick="switchTab('db-manager')">📊 DB 업데이트</button>
+                        <button class="tab-button whitespace-nowrap" onclick="switchTab('db-search')">🔍 DB 검색</button>
+                        <button class="tab-button whitespace-nowrap" onclick="switchTab('pumsum-calculator')">🏗️ 품셈 계산기</button>
+                        <button class="tab-button whitespace-nowrap" onclick="switchTab('n8n-config')">⚙️ 관리자 설정</button>
+                    </div>
+                </div>
+
+                <div id="tab-matching" class="tab-content">
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                        <div class="lg:col-span-4 space-y-6">
+                            <div class="glass-card p-6 rounded-3xl shadow-xl transition-all hover:shadow-2xl border-t-4 border-t-indigo-500">
+                                <select id="sheetSelect" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 mb-2">
+                                    <option value="DB더보기">통합 단가</option>
+                                    <option value="협력사">협력사 단가 </option>
+                                    <option value="ckw단가">ckw 단가</option>
+                                    <option value="정부노임">정부노임 단가</option>
+                                    </select>
+                                <div id="dbStatusBadge" class="hidden"></div> <div id="dbStatusText"></div>
+                            </div>
+                            <div class="glass-card p-6 rounded-3xl shadow-xl transition-all hover:shadow-2xl border-t-4 border-t-blue-500">
+                                <div class="relative group">
+                                    <input type="file" id="excelFile" accept=".xlsx, .xls, .csv" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                                    <div class="border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center group-hover:border-blue-400 group-hover:bg-blue-50 transition-all">
+                                        <p id="fileNameDisplay" class="text-sm font-medium text-slate-500 group-hover:text-blue-600">엑셀 파일을 드래그하거나 클릭</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="space-y-3">
+                                <button onclick="startWorkerMatch()" id="matchBtn" disabled class="w-full bg-slate-800 text-white font-bold py-4 px-6 rounded-2xl shadow-xl hover:bg-slate-900 disabled:bg-slate-200 transition-all flex items-center justify-center gap-2">
+                                    <span id="matchBtnText">⚡ 고속 매칭 실행</span>
+                                </button>
+                                <button onclick="downloadExcel()" id="downloadBtn" disabled class="w-full bg-emerald-500 text-white font-bold py-4 px-6 rounded-2xl shadow-xl hover:bg-emerald-600 disabled:opacity-30 transition-all flex items-center justify-center gap-2">
+                                    결과 엑셀 저장
+                                </button>
+                            </div>
+                        </div>
+                        <div class="lg:col-span-8">
+                            <div class="bg-slate-900 rounded-[2rem] p-6 shadow-2xl flex flex-col h-[700px] border border-slate-800 relative overflow-hidden">
+                                <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-4 z-10">
+                                    <div id="progressContainer" class="hidden w-48 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                        <div id="progressBar" class="h-full bg-indigo-500 transition-all duration-300" style="width: 0%"></div>
+                                    </div>
+                                    <button onclick="clearLog()" class="text-[10px] mono text-slate-500 hover:text-white border border-slate-700 px-3 py-1 rounded-full">CLEAR_LOG</button>
+                                </div>
+                                <div id="log" class="log-container flex-1 mono text-[12px] text-indigo-300 overflow-y-auto whitespace-pre-wrap leading-relaxed px-2 py-2"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-db-manager" class="tab-content hidden">
+                    <div class="glass-card p-8 rounded-3xl shadow-xl">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-bold text-slate-800">📊 데이터베이스 관리</h2>
+                            <div class="flex gap-3">
+                                <button onclick="openAddItemModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-indigo-700 transition-all flex items-center gap-2">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                    품목 추가
+                                </button>
+                                <button onclick="applyAllDBItems()" class="bg-emerald-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-emerald-700 transition-all flex items-center gap-2">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                    모두 적용
+                                </button>
+                                <button onclick="openDeleteAllModal()" class="bg-rose-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-rose-700 transition-all flex items-center gap-2">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    모두 삭제
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="mb-4 flex flex-col md:flex-row gap-3">
+                            <input type="text" id="searchDB" placeholder="품명, 규격으로 검색..." class="flex-1 px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <select id="filterCategory" class="px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" onchange="renderDBTable()">
+                                <option value="">전체 카테고리</option>
+                            </select>
+                        </div>
+
+                        <div class="overflow-auto max-h-[600px] border border-slate-200 rounded-xl">
+                            <table class="db-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 5%">#</th>
+                                        <th style="width: 18%">품명</th>
+                                        <th style="width: 18%">규격</th>
+                                        <th style="width: 8%">단위</th>
+                                        <th style="width: 10%">재료비</th>
+                                        <th style="width: 10%">노무비</th>
+                                        <th style="width: 13%">비고</th>
+                                        <th style="width: 10%">작업</th>
+                                        <th style="width: 8%">적용</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dbTableBody"></tbody>
+                            </table>
+                        </div>
+
+                        <div class="mt-6 flex flex-col md:flex-row justify-between items-center gap-4">
+                            <p class="text-sm text-slate-600">총 <span id="dbCount" class="font-bold text-indigo-600">0</span>개 품목</p>
+                            <div class="flex gap-3">
+                                <div class="relative">
+                                    <input type="file" id="dbExcelUpload" accept=".xlsx, .xls" class="hidden" onchange="importDBFromExcel(event)">
+                                    <button onclick="document.getElementById('dbExcelUpload').click()" class="bg-blue-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-blue-700 transition-all flex items-center gap-2">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0l-4-4m4 4V4"></path></svg>
+                                        DB 엑셀 업로드
+                                    </button>
+                                </div>
+                                <button onclick="exportDBToExcel()" class="bg-slate-700 text-white px-4 py-2 rounded-xl font-semibold hover:bg-slate-800 transition-all flex items-center gap-2">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                    DB 엑셀 다운로드
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-db-search" class="tab-content hidden">
+                    <div class="search-layout">
+
+                        <!-- 좌측 검색 패널 (Sticky) -->
+                        <aside class="search-sidebar">
+                            <div class="search-sidebar__inner">
+                                <div class="glass-card p-6 rounded-3xl shadow-xl bg-white">
+                                    <h3 class="text-lg font-bold text-slate-700 mb-4 flex items-center">
+                                        <i class="ph-bold ph-magnifying-glass mr-2 text-indigo-600"></i> DB 검색 설정
+                                    </h3>
+
+                                    <div class="space-y-5">
+                                        <!-- 품명/규격 검색 -->
+                                        <div>
+                                            <label class="block text-sm font-medium text-slate-500 mb-1">검색어 (품명/규격)</label>
+                                            <input type="text" id="externalSearchInput" placeholder="강관" class="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none text-slate-700" onkeypress="if(event.key === 'Enter') DBSearch.execute()">
+                                        </div>
+
+                                        <!-- 추가 검색어 -->
+                                        <div>
+                                            <label class="block text-sm font-medium text-slate-500 mb-1 flex items-center gap-1">
+                                                <i class="ph-bold ph-plus-circle text-indigo-400"></i> 추가 검색어
+                                            </label>
+                                            <input type="text" id="externalSubSearchInput" placeholder="추가 키워드 (예: STS)" class="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none text-slate-700" onkeypress="if(event.key === 'Enter') DBSearch.execute()">
+                                        </div>
+
+                                        <!-- 비고 전용 검색 -->
+                                        <div>
+                                            <label class="block text-sm font-medium text-slate-500 mb-1">비고 검색</label>
+                                            <input type="text" id="externalRemarkInput" placeholder="비고 키워드 입력" class="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none text-slate-700" onkeypress="if(event.key === 'Enter') DBSearch.execute()">
+                                        </div>
+
+                                        <!-- 코드 필터 -->
+                                        <div>
+                                            <div class="flex items-center justify-between mb-1">
+                                                <label class="block text-sm font-medium text-slate-500">코드 필터</label>
+                                                <button onclick="DBSearch.toggleCodeMode()" id="btnCodeMode" class="code-mode-btn flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all" title="코드 필터 모드 전환">
+                                                    <i class="ph-bold ph-list-bullets" id="codeModeIcon"></i>
+                                                    <span id="codeModeLabel">자동</span>
+                                                </button>
+                                            </div>
+                                            <div id="codeFilterWrapper">
+                                                <select id="externalCodeFilter" class="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-slate-700 bg-white">
+                                                    <option value="">전체 코드(선택)</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <!-- 검색 실행 버튼 -->
+                                        <button onclick="DBSearch.execute()" id="btnExecuteSearch" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-200 transition-all flex justify-center items-center">
+                                            <i class="ph-bold ph-magnifying-glass mr-2"></i> 검색
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="bg-indigo-50/80 p-5 rounded-2xl border border-indigo-100">
+                                    <div class="flex items-start gap-3">
+                                        <i class="ph-fill ph-info text-indigo-500 text-xl mt-0.5"></i>
+                                        <div class="w-full">
+                                            <h4 class="font-bold text-indigo-900 text-sm mb-1">검색 가이드</h4>
+                                            <div class="bg-white/70 rounded-lg p-3 text-xs text-indigo-800 border border-indigo-100/50 space-y-1">
+                                                <p>1. 기본 검색: 최대 2가지 입력(AND 로직)</p>
+                                                <p>2. 비고 검색: 비고(연도) 입력</p>
+                                                <p>3. 코드 필터: 자동(클릭)/수동(입력) 모드</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </aside>
+
+                        <!-- 우측 결과 영역 -->
+                        <main class="search-results-panel glass-card rounded-2xl shadow-xl flex flex-col">
+                            <!-- Sticky 헤더 -->
+                            <div class="search-results__header">
+                                <div class="flex justify-between items-center">
+                                    <h3 class="text-base font-bold text-slate-800">검색 결과</h3>
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-xs text-slate-400" id="searchResultCount"></span>
+                                        <div id="extDbSpinner" class="hidden">
+                                            <i class="ph-bold ph-spinner animate-spin text-indigo-500"></i>
+                                        </div>
+                                        <div id="extDbStatus" class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 hidden">
+                                            <i class="ph-fill ph-check-circle mr-1"></i> 로드됨
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 테이블 영역 (가상 스크롤) -->
+                            <div class="search-results__body" id="vsScrollContainer">
+                                <!-- 고정 헤더 -->
+                                <table class="w-full text-sm text-left border-collapse" id="externalResultTable">
+                                    <colgroup>
+                                        <col style="width:25%">
+                                        <col style="width:25%">
+                                        <col style="width:8%">
+                                        <col style="width:14%">
+                                        <col style="width:14%">
+                                        <col style="width:14%">
+                                    </colgroup>
+                                    <thead class="search-results__thead">
+                                        <tr>
+                                            <th class="py-3 px-4 font-semibold border-b border-slate-200">품명</th>
+                                            <th class="py-3 px-4 font-semibold border-b border-slate-200">규격</th>
+                                            <th class="py-3 px-4 font-semibold border-b border-slate-200 text-center">단위</th>
+                                            <th class="py-3 px-4 font-semibold border-b border-slate-200 text-center">재료비</th>
+                                            <th class="py-3 px-4 font-semibold border-b border-slate-200 text-center">노무비</th>
+                                            <th class="py-3 px-4 font-semibold border-b border-slate-200">비고</th>
+                                        </tr>
+                                    </thead>
+                                </table>
+                                <!-- 가상 스크롤 뷰포트 -->
+                                <div id="vsViewport" class="vs-viewport">
+                                    <div id="vsSpacer" class="vs-spacer">
+                                        <table class="w-full text-sm text-left border-collapse">
+                                            <colgroup>
+                                                <col style="width:25%">
+                                                <col style="width:25%">
+                                                <col style="width:8%">
+                                                <col style="width:14%">
+                                                <col style="width:14%">
+                                                <col style="width:14%">
+                                            </colgroup>
+                                            <tbody id="externalResultBody" class="divide-y divide-slate-100 bg-white">
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <!-- 복사 완료 토스트 -->
+                                <div id="copyToast" class="copy-toast">복사됨</div>
+                                <div id="emptySearchResult" class="empty-search-state">
+                                    <i class="ph-duotone ph-magnifying-glass text-4xl mb-2 opacity-50"></i>
+                                    <p>일치하는 항목 없음</p>
+                                </div>
+                            </div>
+                        </main>
+                    </div>
+                </div>
+                <div id="tab-pumsum-calculator" class="tab-content hidden">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                        <div class="glass-card p-6 rounded-3xl shadow-xl">
+                             <button id="pumsumSyncBtn" onclick="syncPumsumData()" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold">🔄 품셈 DB 동기화</button>
+                             <p id="pumsumSyncStatus" class="mt-2 text-center text-xs">대기 중</p>
+                        </div>
+                        <div class="glass-card p-6 rounded-3xl shadow-xl">
+                             <input type="file" id="pumsumFileInput" class="block w-full text-sm text-slate-500 file:bg-emerald-600 file:text-white file:px-4 file:py-2 file:rounded-lg">
+                        </div>
+                        <div class="glass-card p-6 rounded-3xl shadow-xl">
+                             <div class="text-sm">매칭: <span id="pumsumStatScore">0</span> / 총: <span id="pumsumStatTotal">0</span> <span id="pumsumStatStatus"></span></div>
+                        </div>
+                    </div>
+                    <div id="pumsumLoading" class="hidden py-10 text-center">분석 중...</div>
+                    <div id="pumsumResultArea" class="hidden">
+                        <button onclick="exportPumsumToExcel()" class="bg-emerald-600 text-white px-6 py-2 rounded-xl mb-4">결과 엑셀 다운로드</button>
+                        <div class="overflow-x-auto max-h-[600px]">
+                            <table class="w-full border-collapse bg-white" id="pumsumMainTable">
+                                <thead id="pumsumTableHeader"></thead>
+                                <tbody id="pumsumResultBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div id="pumsumEmptyState" class="py-24 text-center border-2 border-dashed border-slate-200 rounded-xl">데이터를 불러오세요.</div>
+                </div>
+
+                <div id="tab-n8n-config" class="tab-content hidden">
+                    <div class="admin-settings max-w-3xl mx-auto space-y-6">
+
+                        <!-- 그룹 1: 데이터 연동 (가장 중요) -->
+                        <section class="settings-group">
+                            <div class="settings-group__header">
+                                <div class="settings-group__icon bg-indigo-50 text-indigo-600">
+                                    <i class="ph-bold ph-database"></i>
+                                </div>
+                                <div>
+                                    <h3 class="settings-group__title">데이터 연동</h3>
+                                    <p class="settings-group__desc">Google Sheets 연결 및 동기화 설정</p>
+                                </div>
+                            </div>
+                            <div class="settings-group__body space-y-4">
+                                <div>
+                                    <label class="settings-label">Google Sheets ID</label>
+                                    <input type="text" id="googleSheetsId" placeholder="스프레드시트 ID를 입력하세요" class="settings-input">
+                                </div>
+                                <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200">
+                                    <input type="checkbox" id="enableAutoSync" class="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500 border-gray-300 cursor-pointer">
+                                    <div>
+                                        <label for="enableAutoSync" class="text-sm font-medium text-slate-700 cursor-pointer">자동 동기화</label>
+                                        <p class="text-xs text-slate-400">활성화 시 DB 변경사항을 자동으로 반영합니다</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- 그룹 2: Webhook URL 관리 (동적 리스트) -->
+                        <section class="settings-group">
+                            <div class="settings-group__header">
+                                <div class="settings-group__icon bg-blue-50 text-blue-600">
+                                    <i class="ph-bold ph-webhooks-logo"></i>
+                                </div>
+                                <div>
+                                    <h3 class="settings-group__title">Webhook URL 관리</h3>
+                                    <p class="settings-group__desc">n8n 연동 Webhook 주소를 등록하세요</p>
+                                </div>
+                            </div>
+                            <div class="settings-group__body">
+                                <div id="webhookList" class="space-y-2"></div>
+                                <button onclick="AdminSettings.addWebhook()" class="mt-3 w-full py-2.5 border-2 border-dashed border-slate-300 rounded-xl text-sm font-semibold text-slate-500 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all flex items-center justify-center gap-1">
+                                    <i class="ph-bold ph-plus"></i> URL 추가
+                                </button>
+                            </div>
+                        </section>
+
+                        <!-- 그룹 3: 보안 설정 -->
+                        <section class="settings-group">
+                            <div class="settings-group__header">
+                                <div class="settings-group__icon bg-amber-50 text-amber-600">
+                                    <i class="ph-bold ph-shield-check"></i>
+                                </div>
+                                <div>
+                                    <h3 class="settings-group__title">보안</h3>
+                                    <p class="settings-group__desc">관리자 인증 비밀번호 관리</p>
+                                </div>
+                            </div>
+                            <div class="settings-group__body">
+                                <label class="settings-label">관리자 비밀번호 변경</label>
+                                <div class="flex gap-2">
+                                    <input type="password" id="newAdminPassword" placeholder="새 암호 (4자리)" maxlength="4" class="settings-input flex-1 text-center tracking-widest">
+                                    <button onclick="changePasswordClick()" class="px-5 py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl transition-colors text-sm">변경</button>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- 하단 저장 버튼 -->
+                        <button onclick="AdminSettings.save()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-indigo-200 transition-all text-base flex items-center justify-center gap-2">
+                            <i class="ph-bold ph-floppy-disk"></i> 전체 설정 저장
+                        </button>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ======================== 자유게시판 뷰 ======================== -->
+    <div id="view-board" class="hidden animate-fade-in">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+
+            <!-- 헤더 -->
+            <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                <div class="flex items-center gap-3">
+                    <button onclick="switchMainView('home')" class="text-sm text-gray-500 hover:text-indigo-600 flex items-center bg-white px-3 py-2 rounded-lg border border-gray-200 shadow-sm">
+                        <i class="ph-bold ph-arrow-left mr-1"></i> 홈
+                    </button>
+                    <div>
+                        <h1 class="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                            <i class="ph-fill ph-chats-teardrop text-indigo-600"></i> 자유게시판
+                        </h1>
+                        <p class="text-slate-500 text-sm mt-0.5">시스템 개선 제안 및 자유로운 의견을 남겨주세요.</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="relative">
+                        <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" id="boardSearchInput" oninput="Board.onSearch(this.value)" placeholder="검색어 입력..." class="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none w-full md:w-64">
+                    </div>
+                    <button onclick="Board.openWriteModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl font-bold text-sm shadow-lg shadow-indigo-100 flex items-center gap-2 shrink-0">
+                        <i class="ph-bold ph-pencil-line"></i> 글쓰기
+                    </button>
+                </div>
+            </header>
+
+            <!-- 카테고리 탭 -->
+            <div class="flex gap-3 mb-8 overflow-x-auto pb-2">
+                <button onclick="Board.setFilter('전체')" class="board-tab-btn active" id="board-tab-전체">전체</button>
+                <button onclick="Board.setFilter('공지')" class="board-tab-btn" id="board-tab-공지">
+                    <i class="ph-fill ph-megaphone text-rose-500"></i> 공지
+                </button>
+                <button onclick="Board.setFilter('개선제안')" class="board-tab-btn" id="board-tab-개선제안">
+                    <i class="ph-fill ph-lightbulb text-amber-400"></i> 개선제안
+                </button>
+                <button onclick="Board.setFilter('질문')" class="board-tab-btn" id="board-tab-질문">
+                    <i class="ph-fill ph-question text-rose-500"></i> 질문
+                </button>
+            </div>
+
+            <!-- 게시글 목록 -->
+            <div class="space-y-3" id="boardPostList"></div>
+
+            <!-- 푸터 -->
+            <footer class="mt-12 pt-6 border-t border-slate-200 text-center">
+                <p class="text-[10px] text-slate-400 tracking-widest uppercase">Community Managed by [ K.95 ]</p>
+            </footer>
+        </div>
+    </div>
+
+    <!-- 게시판 글쓰기 모달 -->
+    <div id="boardWriteModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] hidden items-center justify-center p-4">
+        <div class="bg-white rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden animate-fade-in">
+            <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+                <h3 class="text-lg font-bold text-slate-800">새 글 작성</h3>
+                <button onclick="Board.closeWriteModal()" class="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                    <i class="ph ph-x"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs font-bold text-slate-400 uppercase mb-1 block">카테고리</label>
+                        <select id="boardPostCategory" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium">
+                            <option value="일반">일반</option>
+                            <option value="개선제안">개선제안</option>
+                            <option value="질문">질문</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-400 uppercase mb-1 block">닉네임 (선택)</label>
+                        <input type="text" id="boardPostNickname" placeholder="익명" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase mb-1 block">제목</label>
+                    <input type="text" id="boardPostTitle" placeholder="제목을 입력하세요" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase mb-1 block">내용</label>
+                    <textarea id="boardPostContent" rows="6" placeholder="내용을 입력해주세요." class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
+                </div>
+            </div>
+            <div class="p-6 bg-slate-50 flex gap-3">
+                <button onclick="Board.submitPost()" class="flex-1 bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition-colors">등록하기</button>
+                <button onclick="Board.closeWriteModal()" class="px-6 bg-white border border-slate-200 text-slate-500 font-bold py-3 rounded-xl hover:bg-slate-50 transition-colors">취소</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 게시판 상세보기 + 댓글 모달 -->
+    <div id="boardDetailModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] hidden items-center justify-center p-4">
+        <div class="bg-white rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden animate-fade-in flex flex-col max-h-[90vh]">
+            <div class="p-6 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <div id="boardDetailHeader"></div>
+                <button onclick="Board.closeDetailModal()" class="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                    <i class="ph ph-x text-xl"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto board-modal-scroll flex-1">
+                <div id="boardDetailBody" class="text-slate-700 leading-relaxed mb-8 whitespace-pre-wrap"></div>
+                <div class="border-t border-slate-100 pt-6">
+                    <h4 class="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
+                        <i class="ph ph-chat-circle-dots text-indigo-600 text-lg"></i>
+                        댓글 <span id="boardCommentCount" class="text-indigo-600">0</span>
+                    </h4>
+                    <div id="boardCommentList" class="space-y-4 mb-6"></div>
+                </div>
+            </div>
+            <div class="p-6 bg-slate-50 border-t border-slate-100 shrink-0">
+                <div class="flex gap-2">
+                    <input type="text" id="boardCommentNickname" placeholder="닉네임(익명)" class="w-24 p-2.5 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500">
+                    <input type="text" id="boardCommentInput" placeholder="댓글을 입력하세요..." class="flex-1 p-2.5 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500">
+                    <button onclick="Board.submitComment()" class="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold text-xs hover:bg-indigo-700 transition-colors">등록</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="addItemModal" class="modal">
+        <div class="modal-content p-8">
+            <h3 class="text-2xl font-bold mb-4">새 품목 추가</h3>
+            <div class="space-y-4">
+                <input type="text" id="newItemName" placeholder="품명" class="w-full p-3 border rounded-xl">
+                <input type="text" id="newItemSpec" placeholder="규격" class="w-full p-3 border rounded-xl">
+                <div class="grid grid-cols-2 gap-4">
+                    <input type="text" id="newItemUnit" placeholder="단위" class="w-full p-3 border rounded-xl">
+                    <input type="text" id="newItemNote" placeholder="비고" class="w-full p-3 border rounded-xl">
+                    <input type="number" id="newItemMat" placeholder="재료비" class="w-full p-3 border rounded-xl">
+                    <input type="number" id="newItemLab" placeholder="노무비" class="w-full p-3 border rounded-xl">
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="addNewItem()" class="flex-1 bg-indigo-600 text-white py-3 rounded-xl">추가</button>
+                    <button onclick="closeAddItemModal()" class="px-6 bg-slate-200 py-3 rounded-xl">취소</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="passwordModal" class="modal">
+        <div class="modal-content p-8" style="max-width: 400px;">
+            <h3 class="text-center text-xl font-bold mb-4">관리자 인증</h3>
+            <input type="password" id="adminPassword" class="w-full p-3 border rounded-xl text-center mb-2" maxlength="4" placeholder="****">
+            <div id="passwordError" class="text-red-500 text-center hidden mb-2">비밀번호 오류</div>
+            <div class="flex gap-2">
+                <button onclick="checkAdminPassword()" class="flex-1 bg-indigo-600 text-white py-2 rounded-xl">확인</button>
+                <button onclick="closePasswordModal()" class="flex-1 bg-gray-200 py-2 rounded-xl">취소</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="confirmModal" class="modal">
+        <div class="modal-content p-8 text-center max-w-sm">
+            <h3 class="text-xl font-bold mb-4">정말 삭제하시겠습니까?</h3>
+            <div class="flex gap-2">
+                <button onclick="executePendingDelete()" class="flex-1 bg-rose-600 text-white py-2 rounded-xl">삭제</button>
+                <button onclick="closeConfirmModal()" class="flex-1 bg-gray-200 py-2 rounded-xl">취소</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="deleteAllModal" class="modal">
+        <div class="modal-content p-8 text-center max-w-sm">
+            <h3 class="text-xl font-bold mb-4 text-rose-600">전체 삭제 (주의)</h3>
+            <input type="password" id="deleteAllPassword" class="w-full p-3 border rounded-xl text-center mb-4" placeholder="비밀번호">
+            <button onclick="checkDeleteAll()" class="w-full bg-rose-600 text-white py-2 rounded-xl mb-2">확인 및 삭제</button>
+            <button onclick="closeDeleteAllModal()" class="w-full bg-gray-200 py-2 rounded-xl">취소</button>
+        </div>
+    </div>
+
+    <div id="infoModal" class="modal">
+        <div class="info-modal-content">
+            <div class="info-modal-header">
+                <h3 id="infoModalTitle" class="text-xl font-bold text-slate-800"></h3>
+                <button onclick="closeInfoModal()" class="info-modal-close">
+                    <i class="ph-bold ph-x"></i>
+                </button>
+            </div>
+            <div id="infoModalBody" class="info-modal-body"></div>
+            <div class="info-modal-footer">
+                <p class="text-xs text-slate-400 tracking-widest text-center mb-3">Developed by [ K.95 ]</p>
+                <button onclick="closeInfoModal()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl transition-colors text-sm">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="alertModal" class="modal">
+        <div class="modal-content p-8 text-center max-w-sm">
+            <h3 class="text-xl font-bold mb-4">알림</h3>
+            <p id="alertMessage" class="mb-6 whitespace-pre-wrap"></p>
+            <button onclick="closeAlertModal()" class="w-full bg-indigo-600 text-white py-2 rounded-xl">확인</button>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script>
+    /* config.js 미설치 안내 가드 — GitHub Pages 배포 시 config.js 없이 접근하면 설정 안내 화면을 표시 */
+    if (typeof APP_CONFIG === 'undefined') {
+        window.APP_CONFIG = Object.freeze({
+            GOOGLE_SHEETS_ID: '', OPENSHEET_API_BASE: 'https://opensheet.elk.sh',
+            DEFAULT_ADMIN_PASSWORD: '', EXCHANGE_RATE_API: '',
+            GEMINI_API_KEY: '', LME_SHEET_ID: '', LME_SHEET_NAME: 'LME',
+            PUMSUM_SHEET_ID: '', PUMSUM_SHEET_NAME: 'Table종합', N8N_NOTIFICATION_WEBHOOK: ''
+        });
+        document.body.style.cssText = 'margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f8fafc;font-family:sans-serif;';
+        document.body.innerHTML = `
+            <div style="max-width:540px;width:100%;margin:0 20px;background:#fff;border-radius:20px;padding:44px;box-shadow:0 8px 32px rgba(0,0,0,0.10);border:1px solid #e2e8f0;">
+                <div style="text-align:center;margin-bottom:28px;">
+                    <div style="font-size:52px;margin-bottom:14px;">⚙️</div>
+                    <h1 style="font-size:22px;font-weight:700;color:#1e293b;margin:0 0 8px">초기 설정이 필요합니다</h1>
+                    <p style="color:#64748b;font-size:14px;margin:0"><code style="background:#f1f5f9;padding:2px 8px;border-radius:6px;font-size:13px;">config.js</code> 파일이 없거나 로드에 실패했습니다.</p>
+                </div>
+                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:22px;margin-bottom:20px;">
+                    <p style="font-size:13px;font-weight:700;color:#334155;margin:0 0 12px;">📋 설정 방법</p>
+                    <ol style="font-size:13px;color:#475569;margin:0;padding-left:20px;line-height:2.2;">
+                        <li><code style="background:#e2e8f0;padding:1px 7px;border-radius:5px;">config.example.js</code> 파일을 복사합니다</li>
+                        <li>파일명을 <strong>config.js</strong>로 변경합니다</li>
+                        <li>API 키·시트 ID·Webhook URL을 실제 값으로 채웁니다</li>
+                        <li>페이지를 새로고침합니다</li>
+                    </ol>
+                </div>
+                <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:10px;padding:14px 18px;font-size:12px;color:#78350f;line-height:1.7;">
+                    ⚠️ <strong>보안 주의:</strong> <code>config.js</code>에는 API 키가 포함됩니다.<br>
+                    절대 GitHub 공개 저장소에 커밋하지 마세요. <code>.gitignore</code>에 등록되어 있습니다.
+                </div>
+            </div>`;
+        window.__SETUP_REQUIRED = true;
+    }
+    </script>
+    <script src="script.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
