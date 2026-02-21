@@ -1,0 +1,248 @@
+{
+  "name": "Daum 메일 감시 + 알림 웹훅",
+  "nodes": [
+    {
+      "parameters": {
+        "mailbox": "INBOX",
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "id": "node-imap",
+      "name": "메일 감지 (IMAP)",
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "credentials": {
+        "imap": {
+          "id": "DAUM_IMAP_CREDENTIAL_ID",
+          "name": "Daum IMAP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "condition-subject-기성",
+              "leftValue": "={{ $json.subject }}",
+              "rightValue": "기성",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "condition-subject-test",
+              "leftValue": "={{ $json.subject }}",
+              "rightValue": "test",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "condition-body-기성",
+              "leftValue": "={{ $json.textPlain || $json.html }}",
+              "rightValue": "기성",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "condition-body-test",
+              "leftValue": "={{ $json.textPlain || $json.html }}",
+              "rightValue": "test",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "or"
+        }
+      },
+      "id": "node-filter",
+      "name": "키워드 필터 (기성/test)",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1D7hfHKGWzrN3MNItBKkWlKJxFw64gD5mXK3URmfckbI",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "DB-mail",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "title": "={{ $json.subject }}",
+            "date": "={{ $now.format('yyyy-MM-dd HH:mm') }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "node-sheets-append",
+      "name": "구글시트 저장 (Append)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [720, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "GOOGLE_CREDENTIAL_ID",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "mail-list",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type"
+              }
+            ]
+          }
+        }
+      },
+      "id": "node-webhook",
+      "name": "웹훅 (mail-list)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 600],
+      "webhookId": "mail-list"
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "1D7hfHKGWzrN3MNItBKkWlKJxFw64gD5mXK3URmfckbI",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "DB-mail",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "node-sheets-read",
+      "name": "구글시트 읽기 (Read)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [480, 600],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "GOOGLE_CREDENTIAL_ID",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type"
+              }
+            ]
+          }
+        },
+        "respondWith": "allIncomingItems"
+      },
+      "id": "node-respond",
+      "name": "응답 반환 (CORS)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [720, 600]
+    }
+  ],
+  "connections": {
+    "메일 감지 (IMAP)": {
+      "main": [
+        [
+          {
+            "node": "키워드 필터 (기성/test)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "키워드 필터 (기성/test)": {
+      "main": [
+        [
+          {
+            "node": "구글시트 저장 (Append)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "웹훅 (mail-list)": {
+      "main": [
+        [
+          {
+            "node": "구글시트 읽기 (Read)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "구글시트 읽기 (Read)": {
+      "main": [
+        [
+          {
+            "node": "응답 반환 (CORS)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}
